@@ -1,0 +1,23 @@
+{
+  "name": "gecs",
+  "version": "1.0.0",
+  "description": "This project aims to develop a robust platform leveraging Electron, Redis, and a worker-based backend system for game event capture, data processing, and machine learning training.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mattOd80/gecs.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mattOd80/gecs/issues"
+  },
+  "homepage": "https://github.com/mattOd80/gecs#readme",
+  "dependencies": {
+    "electron": "^26.1.0",
+    "gitignore": "^0.7.0"
+  }
+}
