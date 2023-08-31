@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <!-- Game Controls -->
+    <div>
+        <label for="population">Initial Population (%):</label>
+        <input type="number" id="population" value="10" min="0" max="100">
+        
+        <label for="seed">Seed:</label>
+        <input type="number" id="seed" value="0">
+        
+        <button id="startBtn">Start</button>
+        <button id="pauseBtn" disabled>Pause</button>
+        <button id="resetBtn">Reset</button>
+        
+        <div>
+            <strong>Current Score:</strong> <span id="currentScore">0</span>
+            <strong>Top Score:</strong> <span id="topScore">0</span>
+        </div>
+    </div>
+
+    <!-- Game Display -->
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const cellSize = 10;
+        const rows = canvas.height / cellSize;
+        const cols = canvas.width / cellSize;
+        let grid = [];
+        let score = 0;
+        let topScore = 0;
+        let animationId;
+
+        // Initialize grid with random cells
+        function initializeGrid() {
+            for (let i = 0; i < rows; i++) {
+                grid[i] = [];
+                for (let j = 0; j < cols; j++) {
+                    grid[i][j] = (Math.random() < (document.getElementById('population').value / 100)) ? 1 : 0;
+                }
+            }
+        }
+
+        // Draw grid on canvas
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    if (grid[i][j] === 1) {
+                        ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+        }
+
+        // Update grid for next generation
+        function updateGrid() {
+            let newGrid = [];
+            for (let i = 0; i < rows; i++) {
+                newGrid[i] = [];
+                for (let j = 0; j < cols; j++) {
+                    let neighbors = countNeighbors(i, j);
+                    if (grid[i][j] === 1 && (neighbors < 2 || neighbors > 3)) {
+                        newGrid[i][j] = 0;
+                    } else if (grid[i][j] === 0 && neighbors === 3) {
+                        newGrid[i][j] = 1;
+                    } else {
+                        newGrid[i][j] = grid[i][j];
+                    }
+                }
+            }
+            grid = newGrid;
+        }
+
+        // Count live neighbors for a cell
+        function countNeighbors(x, y) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    let newX = (x + i + rows) % rows;
+                    let newY = (y + j + cols) % cols;
+                    count += grid[newX][newY];
+                }
+            }
+            return count;
+        }
+
+        // Game loop
+        function gameLoop() {
+            score++;
+            document.getElementById('currentScore').innerText = score;
+            if (score > topScore) {
+                topScore = score;
+                document.getElementById('topScore').innerText = topScore;
+            }
+            updateGrid();
+            drawGrid();
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        document.getElementById('startBtn').addEventListener('click', function() {
+            initializeGrid();
+            drawGrid();
+            score = 0;
+            gameLoop();
+            this.disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('population').disabled = true;
+            document.getElementById('seed').disabled = true;
+        });
+
+        document.getElementById('pauseBtn').addEventListener('click', function() {
+            cancelAnimationFrame(animationId);
+            this.disabled = true;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('population').disabled = false;
+            document.getElementById('seed').disabled = false;
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', function() {
+            cancelAnimationFrame(animationId);
+            initializeGrid();
+            drawGrid();
+            score = 0;
+            document.getElementById('currentScore').innerText = score;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('population').disabled = false;
+            document.getElementById('seed').disabled = false;
+        });
+
+        // Initialize on load
+        initializeGrid();
+        drawGrid();
+    </script>
+</body>
+</html>
