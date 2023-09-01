@@ -63,7 +63,6 @@
 
         .left-panel>div {
             background-color: #252526;
-            /* Dark card background */
             padding: 15px;
             margin-bottom: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -90,39 +89,41 @@
         <div class="left-panel">
             <!-- Game Properties and Game Information -->
             <div>
-                <strong>Current Score:</strong> <span id="currentScore">0</span>
-                <strong>Top Score:</strong> <span id="topScore">0</span>
-                <strong>Game State:</strong> <span id="gameState">Evolving</span>
-            </div>
-            <div>
-                <label for="themeSelector">Choose Theme:</label>
-                <select id="themeSelector"></select>
-
-                <label for="population">Initial Population (%):</label>
-                <input type="number" id="population" value="10" min="0" max="100">
-
-                <label for="seed">Seed:</label>
-                <input type="number" id="seed" value="0">
-
-                <label for="stagnation">Stagnation Step Sample Length:</label>
-                <input type="number" id="stagnation" value="100" max="1000" min="30">
+                <strong>Current Score:</strong> <span id="currentScore">0</span><br/>
+                <strong>Top Score:</strong> <span id="topScore">0</span><br />
+                <strong>Game State:</strong> <span id="gameState">Empty</span>
             </div>
             <div>
                 <!-- Game Controls -->
-                <button id="startBtn">Start</button>
-                <button id="pauseBtn" disabled>Pause</button>
-                <button id="resetBtn">Reset</button>
+                <button id="actionBtn">Play</button>
+                <button id="resetBtn" disabled>Reset</button>
             </div>
 
             <div>
                 <label for="debugToggle">Debug Mode:</label>
                 <input type="checkbox" id="debugToggle" checked="checked">
             </div>
+
+            <div>
+                <label for="themeSelector">Choose Theme:</label>
+                <select id="themeSelector"></select>
+            </div>
+
+            <div>
+                <label for="population">Initial Population (%):</label>
+                <input type="number" id="population" value="10" min="0" max="100">
+                <br />
+                <label for="seed">Seed:</label>
+                <input type="number" id="seed" value="0">
+                <br />
+
+                <label for="stagnation">Stagnation Step Sample Length:</label>
+                <input type="number" id="stagnation" value="100" max="1000" min="30">
+            </div>
+
         </div>
 
         <div class="right-panel">
-            <!-- Game Display, Game Controls, and Debug Area -->
-            <!-- Game Display -->
             <canvas id="gameCanvas" width="800" height="800" data-role="gameCanvas"></canvas>
         </div>
     </div>
@@ -174,15 +175,6 @@
             document.getElementById('topScore').innerText = topScore;
         }
 
-        function updateButtonStates(isGameRunning) {
-            document.getElementById('startBtn').disabled = isGameRunning;
-            document.getElementById('pauseBtn').disabled = !isGameRunning;
-            document.getElementById('resetBtn').disabled = isGameRunning;
-            document.getElementById('population').disabled = isGameRunning;
-            document.getElementById('seed').disabled = isGameRunning;
-            document.getElementById('stagnation').disabled = isGameRunning;
-        }
-
         // Initialize grid with empty cells at session start
         function initializeEmptyGrid() {
             for (let i = 0; i < rows; i++) {
@@ -192,7 +184,6 @@
                 }
             }
             previousStates = [];
-            // manageDebug("initializeEmptyGrid")
         }
 
         // Initialize grid with random cells at simulation start
@@ -207,7 +198,6 @@
                 }
             }
             previousStates = [];
-            // manageDebug("initializeGrid")
         }
 
         // Update grid for next generation
@@ -267,14 +257,11 @@
         }
 
         // Set button states
-        function setButtonStates(startDisabled, pauseDisabled, resetDisabled) {
-            document.getElementById('startBtn').disabled = startDisabled;
-            document.getElementById('pauseBtn').disabled = pauseDisabled;
-            document.getElementById('resetBtn').disabled = resetDisabled;
-            document.getElementById('population').disabled = startDisabled;
-            document.getElementById('seed').disabled = startDisabled;
-            document.getElementById('stagnation').disabled = startDisabled;
-        }
+        // function setButtonStates() {
+        //     document.getElementById('population').disabled = startDisabled;
+        //     document.getElementById('seed').disabled = startDisabled;
+        //     document.getElementById('stagnation').disabled = startDisabled;
+        // }
 
         function drawGridLines() {
             ctx.strokeStyle = currentTheme.gridColor; // Color of the grid lines
@@ -314,24 +301,6 @@
                         // Base color of the cube
                         ctx.fillStyle = currentTheme.atomColor;;
                         ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
-
-                        // // Top-left chamfer
-                        // ctx.fillStyle = currentTheme.atomColor;; // Slightly darker shade
-                        // ctx.beginPath();
-                        // ctx.moveTo(j * cellSize, i * cellSize);
-                        // ctx.lineTo(j * cellSize + cellSize * 0.2, i * cellSize);
-                        // ctx.lineTo(j * cellSize, i * cellSize + cellSize * 0.2);
-                        // ctx.closePath();
-                        // ctx.fill();
-
-                        // // Bottom-right chamfer
-                        // ctx.fillStyle = currentTheme.atomColor;; // Even darker shade
-                        // ctx.beginPath();
-                        // ctx.moveTo(j * cellSize + cellSize, i * cellSize + cellSize);
-                        // ctx.lineTo(j * cellSize + cellSize * 0.8, i * cellSize + cellSize);
-                        // ctx.lineTo(j * cellSize + cellSize, i * cellSize + cellSize * 0.8);
-                        // ctx.closePath();
-                        // ctx.fill();
                     }
                 }
             }
@@ -349,7 +318,6 @@
 
             if (liveCells === 0) {
                 document.getElementById('gameState').innerText = 'Dead';
-                endGame("Dead");
                 return;
             }
 
@@ -367,55 +335,40 @@
             // If the current state appears more than half the time in the history, consider it stagnate
             if (recurringStates > maxHistoryLength / 4) {
                 document.getElementById('gameState').innerText = 'Stagnate';
-                endGame("Stagnate");
                 return;
-            }
-        }
-
-
-        function endGame(reason = "") {
-            // Stop the game loop
-            cancelAnimationFrame(animationId);
-
-            // Reset the stagnation counter
-            stagnationCounter = 0;
-
-            // Update the UI
-            updateUIForGameEnd(reason);
-        }
-
-
-        function updateUIForGameEnd(reason) {
-            // Update button states
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('pauseBtn').disabled = true;
-            document.getElementById('resetBtn').disabled = false;
-            document.getElementById('population').disabled = false;
-            document.getElementById('seed').disabled = false;
-            document.getElementById('stagnation').disabled = false;
-
-            // Provide feedback to the user
-            if (reason === "Stagnate") {
-                console.log("The game has become stagnate. Please start a new session.");
             }
         }
 
         // Main game loop
         function gameLoop() {
-            score++;
-            document.getElementById('currentScore').innerText = score;
-            if (score > topScore) {
-                topScore = score;
-                document.getElementById('topScore').innerText = topScore;
-                localStorage.setItem('topScore', topScore);
+            const currentGridState = document.getElementById('gameState').innerText;
+            if (currentGridState === 'Evolving') {
+                score++;
+                document.getElementById('currentScore').innerText = score;
+                if (score > topScore) {
+                    topScore = score;
+                    document.getElementById('topScore').innerText = topScore;
+                    localStorage.setItem('topScore', topScore);
+                }
+                updateGrid();
+                drawGrid();
+                checkGameState();
+                animationId = requestAnimationFrame(gameLoop);
+            } else {
+                // Stop the game loop
+                cancelAnimationFrame(animationId);
+
+                // Reset the stagnation counter
+                stagnationCounter = 0;
+
+                document.getElementById('actionBtn').disabled = true
+
+                // Update the UI
+                console.log(`The grid is now ${currentGridState}. Please play a new session.`);
             }
-            updateGrid();
-            drawGrid();
-            checkGameState();
-            animationId = requestAnimationFrame(gameLoop);
-            updateButtonStates(true);
-            manageDebug("gameLoop");  // Only call manageDebug here
+            manageDebug("gameLoop");
         }
+
 
         // Event listeners
         document.getElementById('themeSelector').addEventListener('change', function () {
@@ -431,32 +384,42 @@
             drawGrid();
         });
 
-        document.getElementById('startBtn').addEventListener('click', function () {
-            this.innerText = "Start"; // Reset the button text
-            initializeGrid();
-            drawGrid();
-            score = 0;
-            // manageDebug("start")
-            gameLoop();
-            updateButtonStates(true)
-        });
-
-        document.getElementById('pauseBtn').addEventListener('click', function () {
-            document.getElementById('startBtn').innerText = "Resume"; // Change the button text
-            cancelAnimationFrame(animationId);
-            updateButtonStates(false);
-            this.disabled = true;
-            // manageDebug("paused")
+        document.getElementById('actionBtn').addEventListener('click', function () {
+            let actionBtn = document.getElementById('actionBtn');
+            let resetBtn = document.getElementById('resetBtn');
+            let currentGridState = document.getElementById('gameState').innerText
+            if (actionBtn.innerText === "Play") {
+                actionBtn.innerText = "Pause";
+                if (currentGridState === 'Evolving') {
+                    gameLoop();
+                } else {
+                    initializeGrid();
+                    drawGrid();
+                    score = 0;
+                    document.getElementById('gameState').innerText = 'Evolving';
+                    gameLoop();
+                }
+            } else if (actionBtn.innerText === "Pause") {
+                actionBtn.innerText = "Play";
+                cancelAnimationFrame(animationId);
+            }
+            resetBtn.disabled = false;
         });
 
         document.getElementById('resetBtn').addEventListener('click', function () {
-            cancelAnimationFrame(animationId);
+            let actionBtn = document.getElementById('actionBtn');
+            let resetBtn = document.getElementById('resetBtn');
+
+            if (actionBtn.innerText === "Pause") {
+                actionBtn.innerText = "Play";
+            }
+
             initializeEmptyGrid();
+            console.log('empty grid initialized')
             drawGrid();
-            score = 0;
-            document.getElementById('currentScore').innerText = score;
-            document.getElementById('gameState').innerText = '';
-            updateButtonStates(false);
+
+            resetBtn.disabled = true;
+            actionBtn.disabled = false;
         });
 
         // Initialize on load
@@ -464,7 +427,6 @@
         initializeEmptyGrid();
         console.log('empty grid initialized')
         drawGrid();
-        setButtonStates(false, true, false);  // Set initial button states
     </script>
 </body>
 
