@@ -60,7 +60,6 @@
             background-color: #2d2d2d;
         }
 
-
         .left-panel>div {
             background-color: #252526;
             padding: 15px;
@@ -69,6 +68,27 @@
             border-radius: 4px;
         }
 
+        .left-panel h4 {
+            border-bottom: 1px solid #555;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            margin-top: 0;
+            font-size: 18px;
+        }
+
+        #leaderboardList {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #leaderboardList li {
+            padding: 5px 0;
+            border-bottom: 1px solid #555;
+        }
+
+        #leaderboardList li:last-child {
+            border-bottom: none;
+        }
 
         .right-panel {
             flex: 2;
@@ -84,43 +104,55 @@
 </head>
 
 <body>
-
     <div class="container">
         <div class="left-panel">
-            <!-- Game Properties and Game Information -->
+            <!-- Game State Information -->
             <div>
-                <strong>Current Score:</strong> <span id="currentScore">0</span><br/>
-                <strong>Top Score:</strong> <span id="topScore">0</span><br />
-                <strong>Game State:</strong> <span id="gameState">Empty</span>
+                <strong>Game State:</strong> <span id="gameState">Empty</span><br />
+                <strong>Current Score:</strong> <span id="currentScore">0</span><br />
+                <strong>Top Score:</strong> <span id="topScore">0</span>
             </div>
+
+            <!-- Game Controls -->
             <div>
-                <!-- Game Controls -->
                 <button id="actionBtn">Play</button>
                 <button id="resetBtn" disabled>Reset</button>
             </div>
 
+            <!-- Simulation Settings -->
             <div>
-                <label for="debugToggle">Debug Mode:</label>
-                <input type="checkbox" id="debugToggle" checked="checked">
-            </div>
-
-            <div>
-                <label for="themeSelector">Choose Theme:</label>
-                <select id="themeSelector"></select>
-            </div>
-
-            <div>
+                <h4>Simulation Settings</h4>
                 <label for="population">Initial Population (%):</label>
-                <input type="number" id="population" value="10" min="0" max="100">
-                <br />
+                <input type="number" id="population" value="10" min="0" max="100"><br />
+
                 <label for="seed">Seed:</label>
-                <input type="number" id="seed" value="0">
-                <br />
+                <input type="number" id="seed" value="0"><br />
 
                 <label for="stagnation">Stagnation Step Sample Length:</label>
-                <input type="number" id="stagnation" value="100" max="1000" min="30">
+                <input type="number" id="stagnation" value="20" max="200" min="2">
             </div>
 
+            <!-- Visual and Debug Settings -->
+            <div>
+                <h4>Visual & Debug Settings</h4>
+                <label for="themeSelector">Choose Theme:</label>
+                <select id="themeSelector"></select><br />
+
+                <label for="debugToggle">Debug Mode:</label>
+                <input type="checkbox" id="debugToggle"><br />
+
+                <label for="randomizeSeed">Randomize Seed:</label>
+                <input type="checkbox" id="randomizeSeed" onchange="toggleAutoPlay()" checked><br />
+
+                <label for="autoPlay">Auto Play:</label>
+                <input type="checkbox" id="autoPlay">
+            </div>
+
+            <!-- Leaderboard -->
+            <div id="leaderboard">
+                <h3>Leaderboard</h3>
+                <ul id="leaderboardList"></ul>
+            </div>
         </div>
 
         <div class="right-panel">
@@ -145,34 +177,122 @@
 
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const cellSize = 20;
-        const rows = canvas.height / cellSize;
-        const cols = canvas.width / cellSize;
 
+        let cellSize = 20;
+        let rows = canvas.height / cellSize;
+        let cols = canvas.width / cellSize;
         let grid = [];
         let previousStates = [];
         let score = 0;
         let topScore = 0;
         let animationId;
-        let DEBUG = true;
-
-        document.getElementById('debugToggle').addEventListener('change', function () {
-            DEBUG = this.checked;
-        });
+        let DEBUG = false;
+        let isPaused = true;  // Initialize isPaused to true
 
         // Adjust canvas size based on window height
+        let wasRunningBeforeResize = false;
+
         function adjustCanvasSize() {
+            const currentGridState = document.getElementById('gameState').innerText;
+
+            // Check if the game is running
+            if (currentGridState === 'Evolving') {
+                wasRunningBeforeResize = true;
+                cancelAnimationFrame(animationId);
+            } else {
+                wasRunningBeforeResize = false;
+            }
+
             const windowHeight = window.innerHeight;
             canvas.height = windowHeight * 0.8; // 80% of window height
             canvas.width = canvas.height; // Keep it square
+
+            // Adjust cellSize
+            cellSize = canvas.width / cols;
+
+
+            // Recalculate rows and cols
+            let newRows = Math.floor(canvas.height / cellSize);
+            let newCols = Math.floor(canvas.width / cellSize);
+
+            if (wasRunningBeforeResize) {
+                // Adjust the size of the existing grid
+                let newGrid = [];
+                for (let i = 0; i < newRows; i++) {
+                    newGrid[i] = [];
+                    for (let j = 0; j < newCols; j++) {
+                        if (i < rows && j < cols) {
+                            newGrid[i][j] = grid[i][j];
+                        } else {
+                            newGrid[i][j] = 0; // Initialize new cells as empty
+                        }
+                    }
+                }
+                grid = newGrid;
+                rows = newRows;
+                cols = newCols;
+            } else {
+                // Reinitialize the grid to match the new dimensions
+                rows = newRows;
+                cols = newCols;
+                initializeEmptyGrid();
+            }
+
+            // Redraw the grid
+            drawGrid();
+
+            // Resume the game if it was running before the resize
+            if (wasRunningBeforeResize) {
+                gameLoop();
+            }
         }
 
-        window.addEventListener('resize', adjustCanvasSize);
+        // Debounce function to limit the frequency of function execution
+        function debounce(func, wait) {
+            let timeout;
+            return function () {
+                const context = this, args = arguments;
+                clearTimeout(timeout);
+                timeout = setTimeout(function () {
+                    timeout = null;
+                    func.apply(context, args);
+                }, wait);
+            };
+        }
 
-        const storedTopScore = localStorage.getItem('topScore');
-        if (storedTopScore) {
-            topScore = parseInt(storedTopScore);
-            document.getElementById('topScore').innerText = topScore;
+        const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+        const leaderboardList = document.getElementById('leaderboardList');
+        leaderboardList.innerHTML = '';
+
+        leaderboard.forEach(entry => {
+            const listItem = document.createElement('li');
+            listItem.textContent = `Score: ${entry.score}, Population: ${entry.settings.population}, Seed: ${entry.settings.seed}, Stagnation: ${entry.settings.stagnation}`;
+            leaderboardList.appendChild(listItem);
+        });
+
+        // Function to toggle the Auto Play checkbox based on Randomize Seed
+        function toggleAutoPlay() {
+            const randomizeSeedCheckbox = document.getElementById('randomizeSeed');
+            const autoPlayCheckbox = document.getElementById('autoPlay');
+            if (randomizeSeedCheckbox.checked) {
+                autoPlayCheckbox.disabled = false;
+            } else {
+                autoPlayCheckbox.checked = false;
+                autoPlayCheckbox.disabled = true;
+            }
+        }
+
+        // Function to update the leaderboard
+        function displayLeaderboard() {
+            const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            const leaderboardList = document.getElementById('leaderboardList');
+            leaderboardList.innerHTML = '';
+
+            leaderboard.forEach(entry => {
+                const listItem = document.createElement('li');
+                listItem.textContent = `Score: ${entry.score}, Population: ${entry.settings.population}, Seed: ${entry.settings.seed}, Stagnation: ${entry.settings.stagnation}`;
+                leaderboardList.appendChild(listItem);
+            });
         }
 
         // Initialize grid with empty cells at session start
@@ -188,6 +308,10 @@
 
         // Initialize grid with random cells at simulation start
         function initializeGrid() {
+
+            if (document.getElementById('randomizeSeed').checked) {
+                document.getElementById('seed').value = Math.floor(Math.random() * 1000000); // Random seed between 0 and 999999
+            }
             const seed = parseInt(document.getElementById('seed').value);
             Math.seedrandom(seed.toString()); // Seed the random number generator
 
@@ -198,7 +322,11 @@
                 }
             }
             previousStates = [];
+            if (document.getElementById('autoPlay').checked) {
+                document.getElementById('actionBtn').click();
+            }
         }
+
 
         // Update grid for next generation
         function updateGrid() {
@@ -256,12 +384,76 @@
             }
         }
 
-        // Set button states
-        // function setButtonStates() {
-        //     document.getElementById('population').disabled = startDisabled;
-        //     document.getElementById('seed').disabled = startDisabled;
-        //     document.getElementById('stagnation').disabled = startDisabled;
-        // }
+        function drawCellWithParticles(x, y) {
+            ctx.fillStyle = currentTheme.atomColor;
+            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+
+            for (let i = 0; i < 5; i++) {
+                const px = (x + Math.random() - 0.5) * cellSize;
+                const py = (y + Math.random() - 0.5) * cellSize;
+
+                const particleSize = Math.random() * 3; // Random size between 0 and 3
+                const particleOpacity = Math.random() * 0.5 + 0.5; // Random opacity between 0.5 and 1
+
+                // Slight color variation
+                const redShift = Math.floor(Math.random() * 10) - 5; // Random value between -5 and 5
+                const color = adjustColor(currentTheme.gridColor, redShift);
+
+                ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${particleOpacity})`;
+                ctx.fillRect(px, py, particleSize, particleSize);
+            }
+        }
+
+        function colorToRGB(color) {
+            // If it's a HEX color
+            if (color.startsWith('#')) {
+                const bigint = parseInt(color.slice(1), 16);
+                const r = (bigint >> 16) & 255;
+                const g = (bigint >> 8) & 255;
+                const b = bigint & 255;
+
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+            // If it's a named color
+            else {
+                const dummy = document.createElement("div");
+                dummy.style.color = color;
+                document.body.appendChild(dummy);
+
+                const computedColor = window.getComputedStyle(dummy).color;
+                document.body.removeChild(dummy);
+
+                return computedColor;
+            }
+        }
+
+        function adjustColor(color, shift) {
+            const rgb = colorToRGB(color);
+            const parts = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (!parts) return { r: 255, g: 255, b: 255 }; // Default to white if parsing fails
+
+            return {
+                r: Math.min(255, Math.max(0, parseInt(parts[1]) + shift)),
+                g: Math.min(255, Math.max(0, parseInt(parts[2]) + shift)),
+                b: Math.min(255, Math.max(0, parseInt(parts[3]) + shift))
+            };
+        }
+
+
+        function draw3DCell(x, y) {
+            const gradient = ctx.createRadialGradient(
+                x * cellSize + cellSize / 2,
+                y * cellSize + cellSize / 2,
+                0,
+                x * cellSize + cellSize / 2,
+                y * cellSize + cellSize / 2,
+                cellSize / 2
+            );
+            gradient.addColorStop(0, currentTheme.atomColor);
+            gradient.addColorStop(1, currentTheme.gridColor);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+        }
 
         function drawGridLines() {
             ctx.strokeStyle = currentTheme.gridColor; // Color of the grid lines
@@ -286,23 +478,57 @@
 
         // Draw grid on canvas
         function drawGrid() {
+            // applyEvolvingEffect()
+            // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw the background
             ctx.fillStyle = currentTheme.backgroundColor;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Use currentTheme values for grid lines and cell colors
+            // Draw the grid lines
             ctx.strokeStyle = currentTheme.gridColor;
             drawGridLines();
 
+            // Draw the cells
             ctx.fillStyle = currentTheme.atomColor;
             for (let i = 0; i < rows; i++) {
                 for (let j = 0; j < cols; j++) {
                     if (grid[i][j] === 1) {
-                        // Base color of the cube
-                        ctx.fillStyle = currentTheme.atomColor;;
-                        ctx.fillRect(j * cellSize, i * cellSize, cellSize, cellSize);
+                        // if (currentTheme.atom3D) {
+                            draw3DCell(i, j)
+                        // } else {
+                        //     drawCellWithParticles(i, j)
+                        // }
                     }
                 }
+            }
+
+            // Apply the evolving effect
+            // applyEvolvingEffect();
+            let currentGameState = document.getElementById('gameState').innerText;
+            if (currentGameState !== 'Evolving') {
+                // Draw a semi-transparent rectangle over the entire canvas
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // Black with 50% opacity
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Draw the appropriate text based on game state
+                ctx.font = '48px Arial';
+                ctx.fillStyle = 'white';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                let txt;
+                if (currentGameState === 'Empty') {
+                    txt = 'Press Play to start';
+                } else if (currentGameState === 'Stagnate') {
+                    txt = 'Stagnate';
+                } else if (currentGameState === 'Dead') {
+                    txt = 'Dead';
+                } else {
+                    txt = 'Paused';
+                }
+                ctx.fillText(txt, canvas.width / 2, canvas.height / 2);
             }
         }
 
@@ -339,17 +565,74 @@
             }
         }
 
+        function updateLeaderboardIfNeeded() {
+            let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            leaderboard.push({
+                score: score,
+                settings: {
+                    population: document.getElementById('population').value,
+                    seed: document.getElementById('seed').value,
+                    stagnation: document.getElementById('stagnation').value
+                }
+            });
+
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 3);
+
+            // Check if the current score is in the top 3
+            if (leaderboard.some(entry => entry.score === score)) {
+                localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+                displayLeaderboard();
+            }
+        }
+
+        // function applyEvolvingEffect() {
+        //     if (document.getElementById('gameState').innerText === 'Evolving') {
+        //         ctx.globalAlpha = 0.5;
+        //         ctx.fillStyle = 'white';
+        //         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        //         ctx.globalAlpha = 1.0; // Reset to default
+        //     }
+        // }
+        // function applyEvolvingEffect() {
+        //     if (document.getElementById('gameState').innerText === 'Evolving') {
+        //         ctx.globalAlpha = 0.8; // Increase the alpha for a stronger effect
+        //         ctx.fillStyle = 'red'; // Change to a bright color for testing
+        //         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        //         ctx.globalAlpha = 1.0; // Reset to default
+        //     }
+        // }
+        let alphaDirection = 0.005; // Decreased increment for smoother transition
+        let currentAlpha = 0.5; // Starting alpha value
+
+        function applyEvolvingEffect() {
+            if (document.getElementById('gameState').innerText === 'Evolving') {
+                ctx.globalAlpha = currentAlpha;
+                ctx.fillStyle = currentTheme.gridColor; // Use the theme's grid color
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Adjust alpha for next frame
+                currentAlpha += alphaDirection;
+                if (currentAlpha >= 0.8 || currentAlpha <= 0.5) {
+                    alphaDirection = -alphaDirection; // Reverse direction when reaching limits
+                }
+            } else {
+                currentAlpha = 0.5; // Reset to default when not evolving
+            }
+            ctx.globalAlpha = 1.0; // Reset to default
+
+            requestAnimationFrame(applyEvolvingEffect); // Continue the animation loop
+        }
+
+        // Start the animation loop
+        requestAnimationFrame(applyEvolvingEffect);
+
         // Main game loop
         function gameLoop() {
             const currentGridState = document.getElementById('gameState').innerText;
             if (currentGridState === 'Evolving') {
                 score++;
                 document.getElementById('currentScore').innerText = score;
-                if (score > topScore) {
-                    topScore = score;
-                    document.getElementById('topScore').innerText = topScore;
-                    localStorage.setItem('topScore', topScore);
-                }
                 updateGrid();
                 drawGrid();
                 checkGameState();
@@ -358,27 +641,63 @@
                 // Stop the game loop
                 cancelAnimationFrame(animationId);
 
+                // Check if the score is a session high score
+                if (score > topScore) {
+                    topScore = score;
+                    document.getElementById('topScore').innerText = topScore;
+                }
+
+                // Update the leaderboard if the score is within the top 5
+                updateLeaderboardIfNeeded();
+
                 // Reset the stagnation counter
                 stagnationCounter = 0;
 
-                document.getElementById('actionBtn').disabled = true
-
                 // Update the UI
                 console.log(`The grid is now ${currentGridState}. Please play a new session.`);
+                drawGrid();
+
+                // Ensure the game is paused and the actionBtn text is "Play"
+                isPaused = true;
+                document.getElementById('actionBtn').innerText = "Play";
+
+
+                // Check for auto-play
+                if (document.getElementById('autoPlay').checked) {
+                    setTimeout(() => {
+                        initializeGrid(); // Start a new simulation
+                        drawGrid();
+                        score = 0;
+                        document.getElementById('gameState').innerText = 'Evolving';
+                        gameLoop();
+                    }, 500); // Delay of 1 second before restarting
+                }
+
             }
             manageDebug("gameLoop");
         }
 
+        // Add the event listener with debounce
+        window.addEventListener('resize', debounce(adjustCanvasSize, 250));
 
-        // Event listeners
+        document.getElementById('debugToggle').addEventListener('change', function () {
+            DEBUG = this.checked;
+        });
+
+        function setThemeStyles() {
+            // Update UI colors
+            document.body.style.backgroundColor = currentTheme.uiBackground;
+            document.body.style.color = currentTheme.uiText;
+            canvas.style.filter = `drop-shadow(0 0 5px ${currentTheme.gridColor})`;
+            const labels = document.querySelectorAll('label');
+            labels.forEach(label => label.style.color = currentTheme.uiHighlight);
+        }
+
         document.getElementById('themeSelector').addEventListener('change', function () {
             currentTheme = themes[this.value];
 
             // Update UI colors
-            document.body.style.backgroundColor = currentTheme.uiBackground;
-            document.body.style.color = currentTheme.uiText;
-            const labels = document.querySelectorAll('label');
-            labels.forEach(label => label.style.color = currentTheme.uiHighlight);
+            setThemeStyles();
 
             // Reflect theme changes on the canvas
             drawGrid();
@@ -387,9 +706,10 @@
         document.getElementById('actionBtn').addEventListener('click', function () {
             let actionBtn = document.getElementById('actionBtn');
             let resetBtn = document.getElementById('resetBtn');
-            let currentGridState = document.getElementById('gameState').innerText
+            let currentGridState = document.getElementById('gameState').innerText;
             if (actionBtn.innerText === "Play") {
                 actionBtn.innerText = "Pause";
+                isPaused = false;  // Set isPaused to false when game is played
                 if (currentGridState === 'Evolving') {
                     gameLoop();
                 } else {
@@ -401,7 +721,9 @@
                 }
             } else if (actionBtn.innerText === "Pause") {
                 actionBtn.innerText = "Play";
+                isPaused = true;
                 cancelAnimationFrame(animationId);
+                drawGrid();
             }
             resetBtn.disabled = false;
         });
@@ -414,12 +736,13 @@
                 actionBtn.innerText = "Play";
             }
 
-            initializeEmptyGrid();
-            console.log('empty grid initialized')
+            isPaused = true
+            score = 0
             drawGrid();
 
+            initializeEmptyGrid();
+            document.getElementById('gameState').innerText = 'Empty';
             resetBtn.disabled = true;
-            actionBtn.disabled = false;
         });
 
         // Initialize on load

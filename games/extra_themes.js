@@ -1,6 +1,6 @@
 const ExtraThemes = {
     neon: { gridColor: '#00FFFF', backgroundColor: 'black', atomColor: '#39FF14', atom3D: true, uiBackground: '#000', uiText: '#0ff', uiHighlight: '#f0f' },
-    retro: { gridColor: 'brown', backgroundColor: 'beige', atomColor: 'darkbrown', atom3D: false, uiBackground: '#f5deb3', uiText: '#8b4513', uiHighlight: '#a0522d' },
+    // retro: { gridColor: 'brown', backgroundColor: 'beige', atomColor: 'darkbrown', atom3D: false, uiBackground: '#f5deb3', uiText: '#8b4513', uiHighlight: '#a0522d' },
     cyberpunk: { gridColor: '#FF4081', backgroundColor: '#1A1A1A', atomColor: '#BB86FC', atom3D: true, uiBackground: '#121212', uiText: '#03DAC6', uiHighlight: '#6200EA' },
     sunrise: { gridColor: '#FFD700', backgroundColor: '#FF6347', atomColor: '#FF4500', atom3D: false, uiBackground: '#FFA500', uiText: '#FFDAB9', uiHighlight: '#FFB6C1' },
     forest: { gridColor: '#228B22', backgroundColor: '#006400', atomColor: '#8FBC8F', atom3D: true, uiBackground: '#2E8B57', uiText: '#ADFF2F', uiHighlight: '#32CD32' },
